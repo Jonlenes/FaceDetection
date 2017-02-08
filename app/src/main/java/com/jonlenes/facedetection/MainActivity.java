@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+//CvCameraViewListener2 - Interface que comunica com JavaCameraView
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
     private CameraBridgeViewBase cameraView;
@@ -66,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         cameraView = (CameraBridgeViewBase) findViewById(R.id.java_surface_view);
         cameraView.setCvCameraViewListener(this);
+        //cameraView.setDisplayOrientation(90);
 
         achouFace = false;
     }
@@ -73,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     protected void onPause() {
         super.onPause();
+        //Desabilita a camera view
         if (cameraView != null)
             cameraView.disableView();
     }
@@ -90,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             cameraView.disableView();
     }
 
+    /*Camera iniciada*/
     @Override
     public void onCameraViewStarted(int width, int height) {
         mRgba = new Mat(height, width, CvType.CV_8UC4);
@@ -98,22 +102,27 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         resetVars();
     }
 
+    /*bera as matrizes dos quadros e é chamada quando o preview não se faz mais necessário*/
     @Override
     public void onCameraViewStopped() {
         mRgba.release();
         mGray.release();
     }
 
+    /*
+    inputFrame - Frame capturado via Camera do dispositivo.
+    Retorno - Frame para ser visualizado no preview.
+     */
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         mGray = inputFrame.gray();
         mRgba = inputFrame.rgba();
 
-        listaRetangulos = new ArrayList<Rect>();
+        listaRetangulos = new ArrayList<>();
 
         if (!achouFace) {
             nFaces=0;
-            pontos = new ArrayList<Point>();
+            pontos = new ArrayList<>();
             if (cascade != null) {
                 cascade.detectMultiScale(mGray, faces, 1.15, 3, 1, new Size(100, 100), new Size(400, 400));
             }
@@ -334,97 +343,101 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         return retorno;
     }
 
-    private BaseLoaderCallback mLoaderCallback = new
-            BaseLoaderCallback(this) {
-                @Override
-                public void onManagerConnected(int status) {
-                    switch (status) {
-                        case LoaderCallbackInterface.SUCCESS:
-                            //Log.i(TAG, "OpenCV sucess");
-                            try {
+    /*BaseLoaderCallback - Prover suporte entre o do gerenciador OpenCV(baixado no Google Play) e
+    as funções do aplicativo*/
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 
-                                // --------------------------------- load face classificator ------------------------------------
-                                //InputStream is = getResources().openRawResource(R.raw.lbp_cascadefrontal);
-                                InputStream is = getResources().openRawResource(R.raw.lbpcascade_frontalface);
-                                File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
-                                File mCascadeFile = new File(cascadeDir, "lbp_cascadefrontal.xml");
-                                FileOutputStream os = new FileOutputStream(mCascadeFile);
-                                byte[] buffer = new byte[4096];
-                                int bytesRead;
-                                while ((bytesRead = is.read(buffer)) != -1) {
-                                    os.write(buffer, 0, bytesRead);
-                                }
-                                is.close();
-                                os.close();
-                                //----------------------------------------------------------------------------------------------------
+        /* basicamente essa classe declara um método de retorno para certificar que as bibliotecas do OpenCV estão disponíveis.*/
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                    //Classificadores Haar e LBP são inicializados
 
-                                // --------------------------------- load eye classificator -----------------------------------
-                                InputStream iser = getResources().openRawResource(R.raw.haarcascade_eye);
-                                File cascadeDirER = getDir("cascadeER", Context.MODE_PRIVATE);
-                                File cascadeFileER = new File(cascadeDirER, "haarcascade_mcs_eyepair_small.xml");
-                                FileOutputStream oser = new FileOutputStream(cascadeFileER);
+                    try {
 
-                                byte[] bufferER = new byte[4096];
-                                int bytesReadER;
-                                while ((bytesReadER = iser.read(bufferER)) != -1) {
-                                    oser.write(bufferER, 0, bytesReadER);
-                                }
-                                iser.close();
-                                oser.close();
-                                //----------------------------------------------------------------------------------------------------
-
-                                // --------------------------------- load nose classificator ------------------------------------
-                                InputStream isel = getResources().openRawResource(R.raw.haarcascade_mcs_nose);
-                                File cascadeDirNariz = getDir("mCascadeNariz", Context.MODE_PRIVATE);
-                                File cascadeFileNariz = new File(cascadeDirNariz, "haarcascade_mcs_nose.xml");
-                                FileOutputStream osel = new FileOutputStream(cascadeFileNariz);
-
-                                byte[] bufferEL = new byte[4096];
-                                int bytesReadEL;
-                                while ((bytesReadEL = isel.read(bufferEL)) != -1) {
-                                    osel.write(bufferEL, 0, bytesReadEL);
-                                }
-                                isel.close();
-                                osel.close();
-
-                                // ------------------------------------------------------------------------------------------------------
-
-                                // --------------------------------- load mouth classificator ------------------------------------
-                                InputStream ismo = getResources().openRawResource(R.raw.haarcascade_mcs_mouth);
-                                File cascadeBoca = getDir("mCascadeBoca", Context.MODE_PRIVATE);
-                                File cascadeFileBoca = new File(cascadeBoca, "haarcascade_mcs_mouth.xml");
-                                FileOutputStream osmo = new FileOutputStream(cascadeFileBoca);
-
-                                byte[] bufferMo = new byte[4096];
-                                int bytesReadMo;
-                                while ((bytesReadMo = ismo.read(bufferMo)) != -1) {
-                                    osmo.write(bufferMo, 0, bytesReadMo);
-                                }
-                                ismo.close();
-                                osmo.close();
-
-                                // ------------------------------------------------------------------------------------------------------
-                                cascade = new CascadeClassifier(mCascadeFile.getAbsolutePath());
-                                mCascadeER = new CascadeClassifier(cascadeFileER.getAbsolutePath());
-                                mCascadeNariz = new CascadeClassifier(cascadeFileNariz.getAbsolutePath());
-                                mCascadeBoca= new CascadeClassifier(cascadeFileBoca.getAbsolutePath());
-                                faces = new MatOfRect();
-                                if (cascade.empty() || mCascadeER.empty() || mCascadeNariz.empty()|| mCascadeBoca.empty()) {
-                                    Log.i("Cascade Error", "Failed to loadcascade classifier");
-                                    cascade = null;
-                                }
-
-                            } catch (Exception e) {
-                                Log.i("Cascade Error: ", "Cascase not found");
-                            }
-                            cameraView.enableView();
-                            break;
-                        default: {
-                            super.onManagerConnected(status);
+                        // --------------------------------- load face classificator ------------------------------------
+                        //InputStream is = getResources().openRawResource(R.raw.lbp_cascadefrontal);
+                        InputStream is = getResources().openRawResource(R.raw.lbpcascade_frontalface);
+                        File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
+                        File mCascadeFile = new File(cascadeDir, "lbp_cascadefrontal.xml");
+                        FileOutputStream os = new FileOutputStream(mCascadeFile);
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = is.read(buffer)) != -1) {
+                            os.write(buffer, 0, bytesRead);
                         }
-                        break;
+                        is.close();
+                        os.close();
+                        //----------------------------------------------------------------------------------------------------
+
+                        // --------------------------------- load eye classificator -----------------------------------
+                        InputStream iser = getResources().openRawResource(R.raw.haarcascade_eye);
+                        File cascadeDirER = getDir("cascadeER", Context.MODE_PRIVATE);
+                        File cascadeFileER = new File(cascadeDirER, "haarcascade_mcs_eyepair_small.xml");
+                        FileOutputStream oser = new FileOutputStream(cascadeFileER);
+
+                        byte[] bufferER = new byte[4096];
+                        int bytesReadER;
+                        while ((bytesReadER = iser.read(bufferER)) != -1) {
+                            oser.write(bufferER, 0, bytesReadER);
+                        }
+                        iser.close();
+                        oser.close();
+                        //----------------------------------------------------------------------------------------------------
+
+                        // --------------------------------- load nose classificator ------------------------------------
+                        InputStream isel = getResources().openRawResource(R.raw.haarcascade_mcs_nose);
+                        File cascadeDirNariz = getDir("mCascadeNariz", Context.MODE_PRIVATE);
+                        File cascadeFileNariz = new File(cascadeDirNariz, "haarcascade_mcs_nose.xml");
+                        FileOutputStream osel = new FileOutputStream(cascadeFileNariz);
+
+                        byte[] bufferEL = new byte[4096];
+                        int bytesReadEL;
+                        while ((bytesReadEL = isel.read(bufferEL)) != -1) {
+                            osel.write(bufferEL, 0, bytesReadEL);
+                        }
+                        isel.close();
+                        osel.close();
+
+                        // ------------------------------------------------------------------------------------------------------
+
+                        // --------------------------------- load mouth classificator ------------------------------------
+                        InputStream ismo = getResources().openRawResource(R.raw.haarcascade_mcs_mouth);
+                        File cascadeBoca = getDir("mCascadeBoca", Context.MODE_PRIVATE);
+                        File cascadeFileBoca = new File(cascadeBoca, "haarcascade_mcs_mouth.xml");
+                        FileOutputStream osmo = new FileOutputStream(cascadeFileBoca);
+
+                        byte[] bufferMo = new byte[4096];
+                        int bytesReadMo;
+                        while ((bytesReadMo = ismo.read(bufferMo)) != -1) {
+                            osmo.write(bufferMo, 0, bytesReadMo);
+                        }
+                        ismo.close();
+                        osmo.close();
+
+                        // ------------------------------------------------------------------------------------------------------
+                        cascade = new CascadeClassifier(mCascadeFile.getAbsolutePath());
+                        mCascadeER = new CascadeClassifier(cascadeFileER.getAbsolutePath());
+                        mCascadeNariz = new CascadeClassifier(cascadeFileNariz.getAbsolutePath());
+                        mCascadeBoca= new CascadeClassifier(cascadeFileBoca.getAbsolutePath());
+                        faces = new MatOfRect();
+                        if (cascade.empty() || mCascadeER.empty() || mCascadeNariz.empty()|| mCascadeBoca.empty()) {
+                            Log.i("Cascade Error", "Failed to loadcascade classifier");
+                            cascade = null;
+                        }
+
+                    } catch (Exception e) {
+                        Log.i("Cascade Error: ", "Cascase not found");
                     }
+                    cameraView.enableView();
+                    break;
+                default: {
+                    super.onManagerConnected(status);
                 }
-            };
+                break;
+            }
+        }
+    };
 
 }
